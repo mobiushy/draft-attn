@@ -1,0 +1,7 @@
+{
+    "prompt": "Describe this image in detail.",
+    "image": "playground/data/eval/mm-vet/images/v1_123.jpg",
+    "output": [
+        "The image features a cat lying on a bed, surrounded by various items. The cat is positioned near a book, which is open and placed on the bed. There are also two cups on the bed, one closer to the cat and the other further away. \n\nIn addition to the cups, there are two bowls on the bed, one near the cat and the other further away. A cell phone can be seen on the bed as well, placed closer to the right side. The scene creates a cozy and relaxed atmosphere, with the cat enjoying its time on the bed."
+    ]
+}
