@@ -724,14 +724,14 @@ class LlamaModel(LlamaPreTrainedModel):
         all_self_attns = () if output_attentions else None
         next_decoder_cache = () if use_cache else None
 
-        
+
+
         USE_FAST_V = self.use_fast_v
         SYS_LENGTH= self.fast_v_sys_length
         IMAGE_TOKEN_LENGTH = self.fast_v_image_token_length
         ATTENTION_RANK = self.fast_v_attention_rank
         AGG_LAYER = self.fast_v_agg_layer
         USE_FAST_V_Token_Drop = True
-
                 
         # Attention Rerank + Inplace KV Cache Selecting
         if USE_FAST_V and USE_FAST_V_Token_Drop and seq_length > 1:
