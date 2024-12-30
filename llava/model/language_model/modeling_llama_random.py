@@ -600,7 +600,7 @@ class LlamaModel(LlamaPreTrainedModel):
         self.use_fast_v = True
         self.fast_v_sys_length = 36
         self.fast_v_image_token_length = 576
-        self.fast_v_attention_rank = 288
+        self.fast_v_attention_rank = 64
         self.fast_v_agg_layer = 2
     
     def reset_fastv(self):

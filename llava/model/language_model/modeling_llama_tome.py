@@ -673,7 +673,7 @@ class LlamaModel(LlamaPreTrainedModel):
 
         # ===============================================
         token_size = None
-        num_merge_list = [0, 0] + [29 for i in range(30)]
+        num_merge_list = [0, 0] + [81 for i in range(30)]
         N = 576
         SYS_LEN = 36
         # ===============================================

@@ -8,7 +8,7 @@ write_file = open(new_ques_file, "w")
 for item in questions['images']:
     write_file.write(json.dumps({
         "image": item['file_name'],
-        "text": "Can you give a short description to this image?",
+        "text": "Describe this image in one sentence.",
         "question_id": item['id']
     }) + "\n")
 

@@ -48,17 +48,21 @@
 
 
 
-
-import math
 import torch
 
-B = 1
-N = 2
-C = 8
+a = torch.Tensor([[1, 2, 3],
+                  [1, 2, 3]])
+b = torch.Tensor([[2, 3, 4],
+                  [5, 6, 7]])
+c = torch.Tensor([[1, 2, 1],
+                  [4, 3, 1]])
 
-x = torch.randn(B, N, C)
-x = abs(x)
+x = ()
+
+x += (a,)
 print(x)
-n = x.norm(dim=-1, keepdim=True)
-print(n)
-print(x / n)
+x += (b,)
+print(x)
+x += (c,)
+print(x)
+print(sum(x) / len(x))

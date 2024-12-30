@@ -586,7 +586,68 @@ class LlamaModel(LlamaPreTrainedModel):
         self.num_neighbours = 8
         self.num_prop = 16
         # self.num_prop_list = [0, 0, 576-64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        self.num_prop_list = [0, 0] + [39 for i in range(30)]
+
+
+        # ========================================================
+        # inter = 5
+        # stages = 30 // inter
+        # prop_num_list = [115 for _ in range(stages+1)]
+        # # prop_num_list = [352, 112, 56, 0]
+        # last_inter = 30 % inter
+        # kept_list = [576, 576]
+        # for s in range(stages):
+        #     kept_num = kept_list[-1]
+        #     prop_num = prop_num_list[s]
+        #     if kept_num > prop_num:
+        #         stage_list = [kept_num-prop_num for i in range(inter)]
+        #     else:
+        #         stage_list = [kept_num for i in range(inter)]
+        #     kept_list = kept_list + stage_list
+        # if last_inter != 0:
+        #     kept_num = kept_list[-1]
+        #     prop_num = prop_num_list[-1]
+        #     if kept_num > prop_num:
+        #         last_stage_list = [kept_num-prop_num for i in range(last_inter)]
+        #     else:
+        #         last_stage_list = [kept_num for i in range(last_inter)]
+        #     kept_list = kept_list + last_stage_list
+        
+        # self.num_prop_list = []
+        # next_kept_list = [kept_list[0]] + kept_list[:-1]
+        # for a, b in zip(next_kept_list, kept_list):
+        #     self.num_prop_list.append(a-b)
+        # ==========================================================
+        if config.num_hidden_layers == 32:
+            inter = 5
+            pRate = 0.55
+            rRate = 1. - pRate
+            stages = 30 // inter
+            last_inter = 30 % inter
+            kept_list = [576, 576]
+        if config.num_hidden_layers == 40:
+            inter = 6
+            pRate = 0.55
+            rRate = 1. - pRate
+            stages = 38 // inter
+            last_inter = 38 % inter
+            kept_list = [576, 576]
+        
+        for _ in range(stages):
+            kept_num = kept_list[-1]
+            stage_list = [int(kept_num*rRate) for i in range(inter)]
+            kept_list = kept_list + stage_list
+        if last_inter != 0:
+            kept_num = kept_list[-1]
+            last_stage_list = [int(kept_num*rRate) for i in range(last_inter)]
+            kept_list = kept_list + last_stage_list
+            
+        self.num_prop_list = []
+        next_kept_list = [kept_list[0]] + kept_list[:-1]
+        for a, b in zip(next_kept_list, kept_list):
+            self.num_prop_list.append(a-b)
+        # ===========================================================
+        # print(self.num_prop_list)
+        # self.num_prop_list = [0, 0] + [43 for i in range(30)]
         self.alpha = 0.1
 
         # ================================================================= 
@@ -643,6 +704,7 @@ class LlamaModel(LlamaPreTrainedModel):
         # print(graph.shape)
         # print(graph)
         # ==========================================
+
 
         # ==========================================
         # attn = torch.mean(attn, dim=1)
@@ -933,19 +995,32 @@ class LlamaModel(LlamaPreTrainedModel):
                 )
             else:
                 # ================================== token propagation ===============================
-                if idx >= 2 and seq_length > 1 and N > self.num_prop_list[idx]:
+                if seq_length > 1:
 
-                    attn = layer_outputs[1][:, :, SYS_LEN+N:, SYS_LEN:SYS_LEN+N]
-                    index_kept, index_prop = self.select(attn, standard=self.selection, num_prop=self.num_prop_list[idx])
+                    if N > self.num_prop_list[idx] and self.num_prop_list[idx] > 0:
 
-                    x = hidden_states[:, SYS_LEN:SYS_LEN+N, :]
-                    graph = self.get_graph(x)
-                    x, graph, token_scales = self.propagate(x, graph, index_kept, index_prop, standard=self.propagation,
-                                                             alpha=self.alpha, token_scales=token_scales)
+                        attn = layer_outputs[1][:, :, SYS_LEN+N:, SYS_LEN:SYS_LEN+N]
+
+                        # if idx == 2: 
+                        #     attn = sum(all_self_attns[idx-2:]) / 2
+                        # else:
+                        #     attn = sum(all_self_attns[idx-self.inter:]) / self.inter
+                        # attn = attn[:, :, SYS_LEN+N:, SYS_LEN:SYS_LEN+N]
+
+                        # attn = sum(all_self_attns[idx-2:]) / 2
+                        # attn = attn[:, :, SYS_LEN+N:, SYS_LEN:SYS_LEN+N]
+
+                        index_kept, index_prop = self.select(attn, standard=self.selection, num_prop=self.num_prop_list[idx])
+
+                        x = hidden_states[:, SYS_LEN:SYS_LEN+N, :]
+                        graph = self.get_graph(x)
+                        x, graph, token_scales = self.propagate(x, graph, index_kept, index_prop, standard=self.propagation,
+                                                                alpha=self.alpha, token_scales=token_scales)
+                        
+                        hidden_states = torch.cat([hidden_states[:, :SYS_LEN, :], x, hidden_states[:, SYS_LEN+N:, :]], dim=1)
+                        position_ids = torch.cat([position_ids[:, :SYS_LEN], position_ids[:, SYS_LEN+self.num_prop_list[idx]:]], dim=1)
+                        N = N - self.num_prop_list[idx]
                     
-                    hidden_states = torch.cat([hidden_states[:, :SYS_LEN, :], x, hidden_states[:, SYS_LEN+N:, :]], dim=1)
-                    position_ids = torch.cat([position_ids[:, :SYS_LEN], position_ids[:, SYS_LEN+self.num_prop_list[idx]:]], dim=1)
-                    N = N - self.num_prop_list[idx]
 
                 # ====================================================================================
 
